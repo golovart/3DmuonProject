@@ -467,3 +467,16 @@ def save_detector(file_name: str, detector: dict, angle_params: tuple, i_det=0, 
             outf.write('{:.3f}\n'.format((tx_max - tx_min) / (n_tx - 1)))
             det_array = np.reshape(detector['dir_mass_' + sim_type], (n_tx, n_ty))
             np.savetxt(outf, det_array, fmt='%.2f', delimiter=',')
+
+
+def merge(vox_array, factor=2, delta=0.01):
+    # Potential implementation of merging small voxels into larger ones for pre-study with identifying interesting areas
+    big_shape = np.ceil(np.array(vox_array.shape)/factor).astype(int)
+    vox_big = np.zeros(big_shape)
+    for i in range(big_shape[0]):
+        for j in range(big_shape[1]):
+            for k in range(big_shape[2]):
+                vox_big[i,j,k] = np.sum(vox_array[i*factor:(i+1)*factor, j*factor:(j+1)*factor, k*factor:(k+1)*factor])/factor**3
+    # vox_big = np.where(vox_big>0.5, 1-delta, delta)
+    # TODO: implement threshold before visualisation
+    return vox_big

@@ -10,16 +10,16 @@ size = 1  # voxel size
 fact = 1  # enlarging the voxel size (and angular bins)
 size *= fact
 delta_alpha = 0  # .0001  # small parameter to represent the empty voxels
-scene_shape = (8,8,8,2)
+scene_shape = (20,20,20,2)
 scale = scene_shape[2]/20
 angle_bin, det_nx = 3*scene_shape[2], 3  # binning of the angle along axis and number of detectors along axis (NxN)
 # min angle bin number should be 2*np.sqrt(2)*h -- furthest voxel angular size is 1 bin
 angle_params = (-1,1,angle_bin//fact, -1,1,angle_bin//fact)  # angular binning for tan_x and tan_y
 location_params = (3*scale,17*scale,det_nx, 3*scale,17*scale,det_nx, -3)  # x&y locations and number of detectors
 # location_params = (3.5,16.5,det_nx, 3.5,16.5,det_nx, -3)
-multi_detect = det_nx-1  # number of intersecting detectors in the anomalous voxel
+multi_detect = det_nx  # number of intersecting detectors in the anomalous voxel
 thresh = 0.6  # visualisation threshold after simulation
-shift = 0 # np.array([20, 20, 0])
+shift = 0 #np.array([20, 20, 0])
 
 
 def line_rule(x,y,z, p1=None, p2=None, delta=1.0, R=20):
@@ -64,19 +64,8 @@ volo_true = add_empty_sphere(volo_true, (np.array((4,8,5.5))+shift)*scale, 2*sca
 
 
 
-# def merge(vox_array, factor=2, delta=0.01):
-#     big_shape = np.ceil(np.array(vox_array.shape)/factor).astype(int)
-#     vox_big = np.zeros(big_shape)
-#     for i in range(big_shape[0]):
-#         for j in range(big_shape[1]):
-#             for k in range(big_shape[2]):
-#                 vox_big[i,j,k] = np.sum(vox_array[i*factor:(i+1)*factor, j*factor:(j+1)*factor, k*factor:(k+1)*factor])/factor**3
-#     # vox_big = np.where(vox_big>0.5, 1-delta, delta)
-#     # TODO: implement threshold before visualisation
-#     return vox_big
-#
-#
-# # simulation with big voxels
+
+# simulation with big voxels
 # volo_true = merge(volo_true, factor=fact, delta=delta_alpha) if fact > 1 else np.copy(volo_true) # /fact**3
 # volo_init = merge(volo_init, factor=fact, delta=delta_alpha) if fact > 1 else np.copy(volo_init)  # /fact**3
 
@@ -88,7 +77,7 @@ detectors, voxel_crosses_list = create_detectors(angle_params, location_params, 
 print('initialization time:', datetime.now()-start)
 
 # for i_d, det in enumerate(detectors):
-i_d = 1; det = detectors[i_d]
+i_d = 4; det = detectors[i_d]
 visualise_detector(det, angle_params, i_det=i_d, iterated=False)
 # Saving detector initial states
 # if os.path.exists('data/detectors'): shutil.rmtree('data/detectors')
@@ -106,20 +95,20 @@ for s in range(num_steps):
 print('iteration time:', datetime.now()-start)
 visualise_detector(detectors[i_d], angle_params, i_det=i_d, iterated=True)
 # to visualise unknown structures in "true" scheme
-delta_vis = (0.2,1)
-volo_true = add_empty_sphere(volo_true, (np.array((15.5, 13.5, 3.5)) + shift) * scale, 2.5 * scale, delta_vis)
-volo_true = add_empty_sphere(volo_true, (np.array((12, 5, 15.5)) + shift) * scale, 1.8 * scale, delta_vis)
-volo_true = add_empty_sphere(volo_true, (np.array((4, 8, 5.5)) + shift) * scale, 2 * scale, delta_vis)
-visualise_voxels(volo_true[...,0], inv=True, figsize=(5, 5))
-visualise_voxels(voxel_list_to_array(list_pred, size=size)[...,0].clip(0,1), inv=True, figsize=(5,5), det_coords=np.array([d['coord'] for d in detectors])/fact)
-
-vox_pred_thresh = np.where(voxel_list_to_array(list_pred, size=size).clip(0,1)>thresh, 1.0-delta_alpha, delta_alpha)
-volo_true[...,0] = np.where(volo_true[...,0] > thresh, 1.0 - delta_alpha, delta_alpha)
-visualise_voxels(vox_pred_thresh[...,0], inv=True, figsize=(5,5), det_coords=np.array([d['coord'] for d in detectors])/fact)
-visualise_voxels((np.abs(volo_true - vox_pred_thresh))[...,0].clip(0, 1), inv=False, figsize=(5, 5))
+# delta_vis = (0.2,1)
+# volo_true = add_empty_sphere(volo_true, (np.array((15.5, 13.5, 3.5)) + shift) * scale, 2.5 * scale, delta_vis)
+# volo_true = add_empty_sphere(volo_true, (np.array((12, 5, 15.5)) + shift) * scale, 1.8 * scale, delta_vis)
+# volo_true = add_empty_sphere(volo_true, (np.array((4, 8, 5.5)) + shift) * scale, 2 * scale, delta_vis)
+# visualise_voxels(volo_true[...,0], inv=True, figsize=(5, 5))
+# visualise_voxels(voxel_list_to_array(list_pred, size=size)[...,0].clip(0,1), inv=True, figsize=(5,5), det_coords=np.array([d['coord'] for d in detectors])/fact)
+#
+# vox_pred_thresh = np.where(voxel_list_to_array(list_pred, size=size).clip(0,1)>thresh, 1.0-delta_alpha, delta_alpha)
+# volo_true[...,0] = np.where(volo_true[...,0] > thresh, 1.0 - delta_alpha, delta_alpha)
+# visualise_voxels(vox_pred_thresh[...,0], inv=True, figsize=(5,5), det_coords=np.array([d['coord'] for d in detectors])/fact)
+# visualise_voxels((np.abs(volo_true - vox_pred_thresh))[...,0].clip(0, 1), inv=False, figsize=(5, 5))
 print('iteration+visualisation time:', datetime.now()-start, end='\n\n')
 print('Initial difference (in voxels): {:.2f}'.format(np.abs(volo_true-volo_init)[...,0].sum()))
-print('Error size (in wrong voxels) for {}x{} detectors: {:.2f}'.format(det_nx, det_nx, np.abs(volo_true - vox_pred_thresh)[...,0].sum()))
+# print('Error size (in wrong voxels) for {}x{} detectors: {:.2f}'.format(det_nx, det_nx, np.abs(volo_true - vox_pred_thresh)[...,0].sum()))
 
 # Saving the results
 # if os.path.exists('data/3d_output'): shutil.rmtree('data/3d_output')
