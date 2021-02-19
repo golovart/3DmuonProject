@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
-from utils import *
+from muon_utils import *
 import os, shutil
 
 # Simulation parameters
@@ -17,14 +17,6 @@ location_params = (3*scale,17*scale,det_nx, 3*scale,17*scale,det_nx, -3)  # x&y 
 multi_detect = det_nx-1  # number of intersecting detectors in the anomalous voxel
 thresh = 0.6  # visualisation threshold after simulation
 shift = 0 # np.array([20, 20, 0])
-
-
-def line_rule(x,y,z, p1=None, p2=None, delta=1.0, R=20):
-    p = np.array([x,y,z])*delta
-    l = p-p1; l12 = p2-p1
-    d1 = -np.dot(p2-p1,p1); d2 = -np.dot(p2-p1, p2)
-    if np.linalg.norm(l)<delta: return True
-    return (np.linalg.norm(np.cross(l,l12))/np.linalg.norm(l12)<R and np.dot(p2-p1,p)+d2<0 and np.dot(p2-p1,p)+d1>0) or np.linalg.norm(p-p1)<R or np.linalg.norm(p-p2)<R
 
 
 # # defining the voxels

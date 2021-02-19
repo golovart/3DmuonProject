@@ -378,6 +378,20 @@ def visualise_detector(detector: dict, angle_params: tuple, i_det=0, iterated=Tr
     plt.show()
 
 
+def rve_score(vox_true:np.ndarray, vox_init:np.ndarray, vox_pred:np.ndarray):
+    """
+    Remaining voxel error score: sum of voxel errors (number of wrong voxels) divided by number of initially wrong voxels.
+
+    :param vox_true: the ground-truth 3d model
+    :param vox_init: the starting 3d model
+    :param vox_pred: the 3d model after optimisation
+    :return: float, score
+    """
+    if len(vox_pred.shape)>3:
+        return np.sum(np.abs(vox_pred - vox_true)[...,0]) / np.sum(np.abs(vox_init - vox_true)[...,0])
+    return np.sum(np.abs(vox_pred-vox_true))/np.sum(np.abs(vox_init-vox_true))
+
+
 def save_voxel_model(voxels: np.ndarray, format='.txt', file_name='voxel_model', data_name='predicted_model', size=1):
     """
     Save 3d voxel model either as a ndarray (in hdf5), a list of (x,y,z,m) voxels (in txt) or a flattened array of bytes (binary format)
