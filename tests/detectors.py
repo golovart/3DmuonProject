@@ -9,14 +9,14 @@ size = 1  # voxel size
 delta_alpha = 1.0  # .0001  # parameter to represent the empty voxels
 thresh = 0.5  # visualisation threshold after simulation
 shift = 0  # np.array([20, 20, 0])
-scene_shape = (32, 32, 32, 2)
+scene_shape = (40, 40, 40, 2)
 scale = scene_shape[2] / 20
 angle_bin = 3 * scene_shape[2]  # binning of the angle along axis
 # min angle bin number should be 2*np.sqrt(2)*h -- furthest voxel angular size is 1 bin
 angle_params = (-1, 1, angle_bin, -1, 1, angle_bin)  # angular binning for tan_x and tan_y
 multi_detect = 2  # number of intersecting detectors in the anomalous voxel
 global_start = datetime.now()
-
+outf = open(__file__[:-3]+'_results.txt', 'w')
 
 def locations_grid(det_nx, scene_shape):
     dx = scene_shape[0] / det_nx / 2
@@ -24,11 +24,12 @@ def locations_grid(det_nx, scene_shape):
 
 
 locations_set = [locations_grid(d, scene_shape) for d in [2, 3, 4]]
-locations_set.append([(7,10,-4),(16,16,-4),(25,22,-4),(27,7,-4)])
-locations_set.append([(7,10,-4),(7,14,-4),(25,22,-4),(27,7,-4)])
-locations_set.append(np.hstack((np.random.rand(9,1)*32, np.random.rand(9,1)*32, -4*np.ones((9,1)))))
+locations_set.append(np.array([(7,10,-4),(16,16,-4),(25,22,-4),(27,7,-4)])*scene_shape[2]/32)
+locations_set.append(np.array([(7,10,-4),(7,14,-4),(25,22,-4),(27,7,-4)])*scene_shape[2]/32)
+locations_set.append(np.hstack((np.random.rand(9,1)*scene_shape[0], np.random.rand(9,1)*scene_shape[1], -4*np.ones((9,1)))))
 
-print('Voxel shape {}x{}x{}'.format(*scene_shape[:-1]))
+outf.write('Voxel shape {}x{}x{}'.format(*scene_shape[:-1])+'\n')
+outf.write('minimum {} of intersecting detectors\n\n'.format(multi_detect))
 for i_loc,loc in enumerate(locations_set):
     location_params = loc
     if i_loc<3: det_grid_name = '{}x{}'.format(loc[2],loc[5])
@@ -36,7 +37,7 @@ for i_loc,loc in enumerate(locations_set):
     elif i_loc==4: det_grid_name = 'Triangular'
     else: det_grid_name = 'Random'
     det_grid_name += ' detector grid'
-    print(det_grid_name)
+    outf.write(det_grid_name+'\n')
 
     # # defining the voxels
     start = datetime.now()
@@ -75,17 +76,20 @@ for i_loc,loc in enumerate(locations_set):
         detectors, list_pred = grad_step(step, lr, detectors, list_pred, voxel_crosses_list, multi_det=multi_detect,
                                          loss_function='l2', n_decay=10, verbose=False)
     volo_pred = voxel_list_to_array(list_pred, size=size)
-    print('iteration time for:', datetime.now() - start)
-    print('Remaining voxel error with {} threshold: {:.2f}'.format(thresh,
-                                                                   rve_score(volo_true, volo_init, volo_pred > thresh)))
-    thr_range = np.arange(0.3, 0.71, 0.05)
+    outf.write('iteration time for: '+str(datetime.now() - start)+'\n')
+    outf.write('Remaining voxel error with {} threshold: {:.2f}'.format(thresh, rve_score(volo_true, volo_init, volo_pred > thresh))+'\n')
+    thr_range = np.arange(0.25, 0.76, 0.05)
     rve_range = [rve_score(volo_true, volo_init, volo_pred > th) for th in thr_range]
     i_best = np.argmin(rve_range)
-    print(det_grid_name+' best score:\n\t{:.2f} with threshold {:.2f}'.format(rve_range[i_best], thr_range[i_best]))
-    if i_loc>4: print('Grid:\n',loc)
-    print()
+    outf.write(det_grid_name+' best score:\n\t{:.2f} with threshold {:.2f}'.format(rve_range[i_best], thr_range[i_best])+'\n')
+    if i_loc>4:
+        outf.write('Grid:\n')
+        np.savetxt(outf, loc, fmt='%.2f')
+        outf.write('\n')
+    outf.write('\n')
 
     del volo_init, volo_pred, volo_true, list_pred, list_init, list_true, detectors, voxel_crosses_list
     gc.collect()
     # if s>20: break
-print('full training time:',datetime.now()-global_start)
+outf.write('full running time: '+str(datetime.now()-global_start)+'\n')
+outf.close()

@@ -1,0 +1,28 @@
+Voxel shape 40x40x40
+4x4 detector grid
+
+Minimum intersecting detectors: 1
+iteration time for: 0:24:18.573709
+Remaining voxel error with 0.5 threshold: 0.09
+1 intersecting detectors best score:
+	0.09 with threshold 0.45
+
+Minimum intersecting detectors: 2
+iteration time for: 0:23:53.407149
+Remaining voxel error with 0.5 threshold: 0.04
+2 intersecting detectors best score:
+	0.03 with threshold 0.45
+
+Minimum intersecting detectors: 3
+iteration time for: 0:26:58.592324
+Remaining voxel error with 0.5 threshold: 0.03
+3 intersecting detectors best score:
+	0.03 with threshold 0.50
+
+Minimum intersecting detectors: 4
+iteration time for: 0:27:49.564593
+Remaining voxel error with 0.5 threshold: 0.07
+4 intersecting detectors best score:
+	0.07 with threshold 0.45
+
+full running time: 1:43:03.778540

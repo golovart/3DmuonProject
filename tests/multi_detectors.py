@@ -9,13 +9,14 @@ size = 1  # voxel size
 delta_alpha = 1.0  # .0001  # parameter to represent the empty voxels
 thresh = 0.5  # visualisation threshold after simulation
 shift = 0  # np.array([20, 20, 0])
-scene_shape = (32, 32, 32, 2)
+scene_shape = (40, 40, 40, 2)
 scale = scene_shape[2] / 20
 angle_bin = 3 * scene_shape[2]  # binning of the angle along axis
 # min angle bin number should be 2*np.sqrt(2)*h -- furthest voxel angular size is 1 bin
 angle_params = (-1, 1, angle_bin, -1, 1, angle_bin)  # angular binning for tan_x and tan_y
 multi_detect = 2  # number of intersecting detectors in the anomalous voxel
 global_start = datetime.now()
+outf = open(__file__[:-3]+'_results.txt', 'w')
 
 
 def locations_grid(det_nx, scene_shape):
@@ -23,14 +24,14 @@ def locations_grid(det_nx, scene_shape):
     return dx, scene_shape[0] - dx, det_nx, dx, scene_shape[0] - dx, det_nx, -dx
 
 
-nx = 3
+nx = 4
 location_params = locations_grid(nx, scene_shape)
-print('Voxel shape {}x{}x{}'.format(*scene_shape[:-1]))
+outf.write('Voxel shape {}x{}x{}'.format(*scene_shape[:-1])+'\n')
 det_grid_name = '{}x{} detector grid'.format(nx,nx)
-print(det_grid_name,'\n')
+outf.write(det_grid_name+'\n\n')
 
-for multi_detect in range(1,4):
-    print('Minimum intersecting detectors:', multi_detect)
+for multi_detect in range(1,5):
+    outf.write('Minimum intersecting detectors: '+str(multi_detect)+'\n')
     # # defining the voxels
     start = datetime.now()
     volo_init = np.ones(scene_shape)
@@ -68,16 +69,16 @@ for multi_detect in range(1,4):
         detectors, list_pred = grad_step(step, lr, detectors, list_pred, voxel_crosses_list, multi_det=multi_detect,
                                          loss_function='l2', n_decay=10, verbose=False)
     volo_pred = voxel_list_to_array(list_pred, size=size)
-    print('iteration time for:', datetime.now() - start)
-    print('Remaining voxel error with {} threshold: {:.2f}'.format(thresh,
-                                                                   rve_score(volo_true, volo_init, volo_pred > thresh)))
-    thr_range = np.arange(0.3, 0.71, 0.05)
+    outf.write('iteration time for: '+str(datetime.now() - start)+'\n')
+    outf.write('Remaining voxel error with {} threshold: {:.2f}'.format(thresh, rve_score(volo_true, volo_init, volo_pred > thresh))+'\n')
+    thr_range = np.arange(0.25, 0.76, 0.05)
     rve_range = [rve_score(volo_true, volo_init, volo_pred > th) for th in thr_range]
     i_best = np.argmin(rve_range)
-    print('{} intersecting detectors best score:\n\t{:.2f} with threshold {:.2f}'.format(multi_detect, rve_range[i_best], thr_range[i_best]))
-    print()
+    outf.write('{} intersecting detectors best score:\n\t{:.2f} with threshold {:.2f}'.format(multi_detect, rve_range[i_best], thr_range[i_best])+'\n')
+    outf.write('\n')
 
     del volo_init, volo_pred, volo_true, list_pred, list_init, list_true, detectors, voxel_crosses_list
     gc.collect()
     # if s>20: break
-print('full training time:',datetime.now()-global_start)
+outf.write('full running time: '+str(datetime.now()-global_start)+'\n')
+outf.close()

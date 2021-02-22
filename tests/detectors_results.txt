@@ -1,0 +1,51 @@
+Voxel shape 40x40x40
+minimum 2 of intersecting detectors
+
+2x2 detector grid
+iteration time for: 0:06:57.720501
+Remaining voxel error with 0.5 threshold: 0.51
+2x2 detector grid best score:
+	0.48 with threshold 0.45
+
+3x3 detector grid
+iteration time for: 0:15:24.979215
+Remaining voxel error with 0.5 threshold: 0.18
+3x3 detector grid best score:
+	0.15 with threshold 0.45
+
+4x4 detector grid
+iteration time for: 0:26:51.278359
+Remaining voxel error with 0.5 threshold: 0.03
+4x4 detector grid best score:
+	0.03 with threshold 0.45
+
+Triangular with center detector grid
+iteration time for: 0:07:31.830819
+Remaining voxel error with 0.5 threshold: 0.58
+Triangular with center detector grid best score:
+	0.55 with threshold 0.45
+
+Triangular detector grid
+iteration time for: 0:07:47.277978
+Remaining voxel error with 0.5 threshold: 1.01
+Triangular detector grid best score:
+	0.92 with threshold 0.35
+
+Random detector grid
+iteration time for: 0:14:31.343837
+Remaining voxel error with 0.5 threshold: 0.34
+Random detector grid best score:
+	0.31 with threshold 0.45
+Grid:
+33.71 8.81 -4.00
+23.55 21.74 -4.00
+18.44 1.96 -4.00
+34.05 8.95 -4.00
+24.02 39.18 -4.00
+0.36 10.67 -4.00
+38.58 13.92 -4.00
+7.20 29.38 -4.00
+1.13 32.26 -4.00
+
+
+full running time: 1:19:07.381268

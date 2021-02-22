@@ -1,0 +1,28 @@
+Simulation with 3x3 grid of detectors, minimum 2 of intersecting detectors 
+
+iteration time for 16x16x16 voxels: 0:00:39.067159
+Remaining voxel error with 0.5 threshold: 0.08
+For 16x16x16 voxels best score:
+	0.00 with threshold 0.40
+
+iteration time for 20x20x20 voxels: 0:01:16.936361
+Remaining voxel error with 0.5 threshold: 0.12
+For 20x20x20 voxels best score:
+	0.00 with threshold 0.40
+
+iteration time for 32x32x32 voxels: 0:06:13.617039
+Remaining voxel error with 0.5 threshold: 0.17
+For 32x32x32 voxels best score:
+	0.11 with threshold 0.40
+
+iteration time for 40x40x40 voxels: 0:26:30.787755
+Remaining voxel error with 0.5 threshold: 0.19
+For 40x40x40 voxels best score:
+	0.16 with threshold 0.45
+
+iteration time for 64x64x64 voxels: 1:45:55.007043
+Remaining voxel error with 0.5 threshold: 0.24
+For 64x64x64 voxels best score:
+	0.20 with threshold 0.40
+
+full running time: 2:20:37.802860

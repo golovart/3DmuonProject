@@ -324,7 +324,7 @@ def visualise_voxels(vox_cubes: np.ndarray, inv=True, figsize=(5, 5), det_coords
     ax = fig.gca(projection='3d')
     ax.voxels(*shrink(filled_2), filled_2, facecolors=fcolors_2)
     if det_coords is not None:
-        ax.scatter(det_coords[:, 0], det_coords[:, 1], zs=0.1, zdir='z', linewidth=3)
+        ax.scatter(det_coords[:, 0], det_coords[:, 1], zs=np.min(det_coords[:, 2]), zdir='z', linewidth=3)
     plt.show()
 
 
@@ -394,7 +394,8 @@ def rve_score(vox_true:np.ndarray, vox_init:np.ndarray, vox_pred:np.ndarray):
 
 def save_voxel_model(voxels: np.ndarray, format='.txt', file_name='voxel_model', data_name='predicted_model', size=1):
     """
-    Save 3d voxel model either as a ndarray (in hdf5), a list of (x,y,z,m) voxels (in txt) or a flattened array of bytes (binary format)
+    Save 3d voxel model either as a ndarray (in hdf5), a list of (x,y,z,m) voxels (in txt) or a flattened array of bytes (binary format).
+    In binary format first 24 bins are 3 integers - shape of the voxel array (Nx,Ny,Nz), rest is np.float32 in bytes.
 
     :param voxels: 3D array of masses
     :param format: data format '.h5'/'.txt'/'.dat'
@@ -423,7 +424,9 @@ def save_voxel_model(voxels: np.ndarray, format='.txt', file_name='voxel_model',
     else:
         file_name += '_' + 'x'.join(map(str, voxels.shape))
         file_name += format
-        voxels.ravel().tofile(file_name)  # +'.np')
+        with open(file_name,'wb') as outf:
+            outf.write(np.array(voxels.shape).tobytes())
+            voxels.astype(dtype=np.float32).ravel().tofile(outf)  # +'.np')
 
 
 def read_voxel_model(file_name: str, data_name='predicted_model'):
@@ -432,7 +435,7 @@ def read_voxel_model(file_name: str, data_name='predicted_model'):
 
     :param file_name: path to file with extension '.h5'/'.txt'/'.dat'
     :param data_name: the dataset name, (only) if loading from hdf5
-    :return:
+    :return:  3D voxel array
     """
     if file_name.split('.')[-1] == 'h5':
         with h5py.File(file_name, 'r') as df:
@@ -453,8 +456,10 @@ def read_voxel_model(file_name: str, data_name='predicted_model'):
                 voxels[i, j, k] = m
             return voxels
     else:
-        shape = tuple(map(int, ((file_name.split('_')[-1]).split('.')[0]).split('x')))
-        voxels = np.fromfile(file_name, float).reshape(shape)
+        with open(file_name, 'rb') as df:
+            byte_data = df.read()
+            shape =np.frombuffer(byte_data[:24], dtype=np.int)
+            voxels = np.frombuffer(byte_data[24:], dtype=np.float32).reshape(shape)
         return voxels
 
 
@@ -474,13 +479,13 @@ def save_detector(file_name: str, detector: dict, angle_params: tuple, i_det=0, 
     if sim_types is None: sim_types = ['true', 'pred']
     for sim_type in sim_types:
         with open(file_name + '_' + sim_type + '.txt', 'w') as outf:
+            outf.write(str(i_det) + '\n')
             outf.write('{:.2f} {:.2f} {:.2f}\n'.format(*detector['coord']))
             outf.write('0 0 0\n')
-            outf.write(str(i_det) + '\n')
             outf.write('{} {} {} {}\n'.format(tx_min, tx_max, ty_min, ty_max))
-            outf.write('{:.3f}\n'.format((tx_max - tx_min) / (n_tx - 1)))
+            outf.write('{} {}\n'.format(n_tx, n_ty))
             det_array = np.reshape(detector['dir_mass_' + sim_type], (n_tx, n_ty))
-            np.savetxt(outf, det_array, fmt='%.2f', delimiter=',')
+            np.savetxt(outf, det_array, fmt='%.2f', delimiter=' ')
 
 
 def merge(vox_array, factor=2, delta=0.01):
