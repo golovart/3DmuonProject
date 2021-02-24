@@ -50,24 +50,41 @@ def add_empty_tunnel(vox_array: np.ndarray, start: np.ndarray, end: np.ndarray, 
     return vox_array
 
 
+def create_default_voxel_setting(scene_shape=(20,20,20), delta_alpha=1.0, shift:np.ndarray=0, size=1.0):
+    scale = scene_shape[2] / 20
+
+    s1, s2, s3, s4, s5 = np.array((3.5, 3.5, 5.5)), np.array((14.5, 9.5, 15.5)), np.array((12.5, 2.5, 2.5)), np.array(
+        (9.5, 15.5, 3.5)), np.array((9, 6.5, 10.5))
+    if shift is not None:
+        s1 += shift;        s2 += shift;        s3 += shift;        s4 += shift;        s5 += shift
+    s1 *= scale;    s2 *= scale;    s3 *= scale;    s4 *= scale;    s5 *= scale
+    r1, r2, r3, r4, rl = 1.5, 2.5, 2, 2, 1
+    r1 *= scale;    r2 *= scale;    r3 *= scale;    r4 *= scale;    rl *= scale
+    volo_init = np.ones(scene_shape)
+    delta_init = delta_alpha if len(scene_shape)<4 else (delta_alpha,0)
+    delta_true = delta_alpha if len(scene_shape)<4 else (delta_alpha,1)
+    if len(scene_shape)<4:
+        volo_init -= delta_alpha
+    else:
+        volo_init[...,0] -= delta_alpha
+    volo_init = add_empty_sphere(volo_init, s1, r1, delta_init)
+    volo_init = add_empty_tunnel(volo_init, s1, s2, rl, delta_init)
+    volo_init = add_empty_sphere(volo_init, s2, r2, delta_init)
+    volo_init = add_empty_tunnel(volo_init, s2, s3, rl, delta_init)
+    volo_init = add_empty_sphere(volo_init, s3, r3, delta_init)
+    volo_init = add_empty_tunnel(volo_init, s3, s5, rl, delta_init)
+    volo_init = add_empty_tunnel(volo_init, s2, s4, rl, delta_init)
+    volo_init = add_empty_sphere(volo_init, s4, r4, delta_init)
+
+    volo_true = np.copy(volo_init)
+    volo_true = add_empty_sphere(volo_true, (np.array((15.5, 13.5, 3.5)) + shift) * scale, 2.5 * scale,
+                                 delta_true)
+    volo_true = add_empty_sphere(volo_true, (np.array((12, 5, 15.5)) + shift) * scale, 1.8 * scale, delta_true)
+    volo_true = add_empty_sphere(volo_true, (np.array((4, 8, 5.5)) + shift) * scale, 2 * scale, delta_true)
+    return volo_init, volo_true
+
+
 # 3D functions
-
-# def line_x_cube(c, R=0.5, p1=None, d=None):
-#     """
-#     :param c:
-#     :param R:
-#     :param p1:
-#     :param d:
-#     :return:
-#     """
-#     dim = len(c); eps  = 1e-6
-#     t = [sorted([(c[i]-R-p1[i])/(d[i]+eps), (c[i]+R-p1[i])/(d[i]+eps)]) for i in range(dim)]
-#     intersect = True
-#     for i,j in itertools.combinations(range(dim),2):
-#         intersect *= not (t[i][1]<t[j][0] or t[i][0]>t[j][1])
-#     return intersect
-
-
 def passed_muons(passed_list: list, voxel_list: np.ndarray):
     """
     Calculating amount of 'mass' passed by muons in specific direction (ray)
@@ -152,6 +169,21 @@ def voxel_list_to_array(vox_list: np.ndarray, size=1.0):
 #     for i_v, (*vox, mass) in enumerate(voxel_list):
 #         if line_x_cube(vox, size / 2, det_coord, direction): passed_list.append(i_v)
 #     return passed_list
+def voxels_vs_detectors(voxel_list, detectors, size=1):
+    # TODO document this
+    mass_loc = -2 if voxel_list.shape[1] > 4 else -1
+    list_vox_coord = voxel_list[:, :mass_loc]
+    voxel_crosses = [[] for i in range(voxel_list.shape[0])]
+    for i_d in detectors.keys():
+        vox_det = []
+        for i_a, ang in enumerate(detectors[i_d]['angles']):
+            assert ang.size == 3
+            vox_det.append(line_x_all_cubes(list_vox_coord, detectors[i_d]['coord'], ang, size / 2))
+            if not vox_det[-1].size: continue
+            for i_v in vox_det[-1]:
+                voxel_crosses[i_v].append((i_d, i_a))
+        detectors[i_d]['vox_per_det_list'] = vox_det
+    return detectors, voxel_crosses
 
 
 def line_x_all_cubes(cube_list: np.ndarray, p1: np.ndarray, d: np.ndarray, r=0.5):
@@ -194,14 +226,14 @@ def create_detectors(angle_params, location_params, list_true, list_pred, size=1
         coords_list = list(
             map(np.array, itertools.product(np.linspace(x_min, x_max, n_x), np.linspace(y_min, y_max, n_y), [z])))
         if detector_shift is not None: coords_list = [c + detector_shift for c in coords_list]
-        coords_list = [c + np.random.rand(3) * 1.5 - 0.75 for c in coords_list]
+        # coords_list = [c + np.random.rand(3) * 1.5 - 0.75 for c in coords_list]
     else:
         coords_list = list(map(np.array,location_params))
         if detector_shift is not None: coords_list = [c + detector_shift for c in coords_list]
 
     list_vox_coord = list_pred[:, :mass_loc]
     voxel_crosses = [[] for i in range(list_pred.shape[0])]
-    detectors = []
+    detectors = {}
     for i_d, coord in enumerate(coords_list):
         # vox_det = [voxels_per_direction(coord, ang, list_pred, size=size) for ang in det_angles]
         vox_det = []
@@ -216,22 +248,23 @@ def create_detectors(angle_params, location_params, list_true, list_pred, size=1
         det_dict = {
             'coord': coord,
             'angles': det_angles,
+            'angle_params': angle_params,
             'dir_mass_true': np.array([passed_muons(dets, list_true) for dets in vox_det]),
             'dir_mass_pred': np.array([passed_muons(dets, list_pred) for dets in vox_det]),
             'vox_per_det_list': vox_det
         }
-        detectors.append(det_dict)
+        detectors[i_d] = det_dict
     return detectors, voxel_crosses
 
 
-def grad_step(n_step:int, lr:float, detector_list:list, vox_list:np.ndarray, vox_crosses:list, multi_det=0, eps=0.1,
+def grad_step(n_step:int, lr:float, detector_list:dict, vox_list:np.ndarray, vox_crosses:list, multi_det=0, eps=0.1,
               loss_function='l2', n_decay=5, verbose=True):
     """
     Performing a step for each voxel by adding a partial gradient of the loss function with possible constraints (number of detectors contributing to step in a voxel).
 
     :param n_step: id of the current step in the descent
     :param lr: learning rate (speed of the descent)
-    :param detector_list: list of dictionaries with detectors ('coord','angles','dir_mass_true','dir_mass_pred')
+    :param detector_list: dict (with i_d as keys) of dictionaries with detectors ('coord','angles','dir_mass_true','dir_mass_pred')
     :param vox_list: (Nx*Ny*Nz,4) ndarray of voxel coordinates and masses (x,y,z,m)
     :param vox_crosses: list of lists, for each voxel is a list of (detector_id, direction_id) for all the rays that cross corresponding voxel
     :param multi_det: number of different detectors contributing to the anomaly in the voxel to include it in the step
@@ -265,9 +298,9 @@ def grad_step(n_step:int, lr:float, detector_list:list, vox_list:np.ndarray, vox
         if fixed_cavities and not vox_list[i_v][-1]: continue
         vox_list[i_v][mass_loc] += lr * step_vox
     vox_list[:, mass_loc] = np.around(np.clip(vox_list[:, mass_loc], 0, 1), decimals=3)
-    for det in detector_list:
-        for i_l in range(len(det['angles'])):
-            det['dir_mass_pred'][i_l] = passed_muons(det['vox_per_det_list'][i_l], vox_list)
+    for i_d in detector_list.keys():
+        for i_l in range(len(detector_list[i_d]['angles'])):
+            detector_list[i_d]['dir_mass_pred'][i_l] = passed_muons(detector_list[i_d]['vox_per_det_list'][i_l], vox_list)
     if not (n_step % n_decay) and verbose: print(n_step, np.unique(np.around(vox_list[:, mass_loc], decimals=1)))
     return detector_list, vox_list
 
@@ -328,13 +361,12 @@ def visualise_voxels(vox_cubes: np.ndarray, inv=True, figsize=(5, 5), det_coords
     plt.show()
 
 
-def visualise_detector(detector: dict, angle_params: tuple, i_det=0, iterated=True, origin='lower',
+def visualise_detector(detector: dict, i_det=0, iterated=True, origin='lower',
                        extent=(-1, 1, -1, 1)):
     """
     Plotting 2D angular histograms for a specific detector, true (experimental), simulated (predicted) and their bin-wise difference.
 
     :param detector: dictionary with all information about corresponding detector
-    :param angle_params: min, max and n_steps for tan_x and tan_y angular binning
     :param i_det: detector id (for labeling the plot only)
     :param iterated: whether the simulation was fitted to represent experimental data
     :param origin: plt.imshow parameter, (0,0) location lower left/upper left
@@ -342,7 +374,7 @@ def visualise_detector(detector: dict, angle_params: tuple, i_det=0, iterated=Tr
     :return: set of 2D histograms for the detector
     """
     sim = 'After processing: ' if iterated else 'Before  processing: '
-    tx_min, tx_max, n_tx, ty_min, ty_max, n_ty = angle_params
+    tx_min, tx_max, n_tx, ty_min, ty_max, n_ty = detector['angle_params']
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(17, 5))
     fig.suptitle('Detector {} located at ({:.2f},{:.2f},{:.0f})'.format(i_det, *detector['coord']))
     # xy_tangents = (np.copy(detector['angles'])/(detector['angles'][:,-1])[:,np.newaxis])[:,:-1]
@@ -459,23 +491,22 @@ def read_voxel_model(file_name: str, data_name='predicted_model'):
         with open(file_name, 'rb') as df:
             byte_data = df.read()
             shape =np.frombuffer(byte_data[:24], dtype=np.int)
-            voxels = np.frombuffer(byte_data[24:], dtype=np.float32).reshape(shape)
+            voxels = np.frombuffer(byte_data[24:], dtype=np.float32).reshape(shape).copy()
         return voxels
 
 
-def save_detector(file_name: str, detector: dict, angle_params: tuple, i_det=0, sim_types: list = None):
+def save_detector(file_name: str, detector: dict, i_det=0, sim_types: list = None):
     """
     Save a 2d angular histogram of the detector.
 
     :param file_name: path to file
     :param detector: dictionary with all information about corresponding detector
-    :param angle_params: min, max and n_steps for tan_x and tan_y angular binning
     :param i_det: detector id (for labeling the plot only)
     :param sim_types: which data to save: 'true'(experimental), 'pred'(simulated)
     :return:
     """
     file_name = file_name.split('.')[0] + '_' + str(i_det)
-    tx_min, tx_max, n_tx, ty_min, ty_max, n_ty = angle_params
+    tx_min, tx_max, n_tx, ty_min, ty_max, n_ty = detector['angle_params']
     if sim_types is None: sim_types = ['true', 'pred']
     for sim_type in sim_types:
         with open(file_name + '_' + sim_type + '.txt', 'w') as outf:
@@ -486,6 +517,34 @@ def save_detector(file_name: str, detector: dict, angle_params: tuple, i_det=0, 
             outf.write('{} {}\n'.format(n_tx, n_ty))
             det_array = np.reshape(detector['dir_mass_' + sim_type], (n_tx, n_ty))
             np.savetxt(outf, det_array, fmt='%.2f', delimiter=' ')
+
+
+def read_detectors(detector_dir: str):
+    # TODO document this
+    det_list = [d for d in os.listdir(detector_dir) if d.startswith('det')]
+    det_types = np.unique([d.split('_')[1] for d in det_list])
+    detectors = {det_iter: {} for det_iter in det_types}
+    for det_name in det_list:
+        det_iter = det_name.split('_')[1]
+        det_type = (det_name.split('_')[-1])[:-4]
+        det_tmp = {}
+        with open(detector_dir+'/'+det_name,'r') as df:
+            det_tmp['id'] = eval(df.readline())
+            det_tmp['coord'] = np.array(list(map(eval,df.readline().split(' '))))
+            det_tmp['orient'] = np.array(list(map(eval,df.readline().split(' '))))
+            tx_min, tx_max, ty_min, ty_max = list(map(eval,df.readline().split(' ')))
+            n_tx, n_ty = list(map(eval,df.readline().split(' ')))
+            # det_angles are tan_x,tan_y, the direction is (t_x,t_y,1)/norm
+            det_angles = list(itertools.product(np.linspace(tx_min, tx_max, n_tx), np.linspace(ty_min, ty_max, n_ty)))
+            det_angles = np.hstack((det_angles, np.ones((len(det_angles), 1))))
+            det_tmp['angles'] = det_angles / np.linalg.norm(det_angles, axis=1, keepdims=True)
+            det_tmp['angle_params'] = (tx_min, tx_max, n_tx, ty_min, ty_max, n_ty)
+            det_tmp['dir_mass_'+det_type] = np.loadtxt(df).ravel()
+        if det_tmp['id'] in detectors[det_iter].keys():
+            detectors[det_iter][det_tmp['id']]['dir_mass_'+det_type] = det_tmp['dir_mass_'+det_type]
+        else:
+            detectors[det_iter][det_tmp['id']] = det_tmp
+    return detectors
 
 
 def merge(vox_array, factor=2, delta=0.01):
