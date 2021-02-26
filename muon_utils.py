@@ -50,7 +50,18 @@ def add_empty_tunnel(vox_array: np.ndarray, start: np.ndarray, end: np.ndarray, 
     return vox_array
 
 
-def create_default_voxel_setting(scene_shape=(20,20,20), delta_alpha=1.0, shift:np.ndarray=0, size=1.0):
+def create_default_voxel_setting(scene_shape=(20,20,20), delta_alpha=1.0, shift: np.ndarray = 0, size=1.0):
+    """
+    Creating 'true' and 'initial' voxel arrays of complex predefined configuration scaled to required shape.
+    If a 4-dimensional shape is given (then last dimension has to be 2), initial cavities are fixed, every voxel
+    contains value and 0/1 defining whether it's fixed.
+
+    :param scene_shape: tuple of shape (preferably square), either (n,n,n) or (n,n,n,2)
+    :param delta_alpha: value for cavities to be filled with (rest is 1-detla_aplha)
+    :param shift: a 3d-vector to shift whole structure, default=0
+    :param size: voxel size (>1 can be used when merging voxels into bigger voxels) [currently not implemented]
+    :return: voxel_init and voxel_true - corresponding np.ndarrays
+    """
     scale = scene_shape[2] / 20
 
     s1, s2, s3, s4, s5 = np.array((3.5, 3.5, 5.5)), np.array((14.5, 9.5, 15.5)), np.array((12.5, 2.5, 2.5)), np.array(
@@ -101,7 +112,7 @@ def passed_muons(passed_list: list, voxel_list: np.ndarray):
     return mass_passed
 
 
-def voxel_array_to_list(volume: np.ndarray, size=1.0):
+def voxel_array_to_list(volume: np.ndarray, size=1):
     """
     Convert 3D voxel volume into a list of voxel coordinates and values (x,y,z,m)
 
@@ -121,7 +132,7 @@ def voxel_array_to_list(volume: np.ndarray, size=1.0):
     return np.array(vox_list)
 
 
-def voxel_list_to_array(vox_list: np.ndarray, size=1.0):
+def voxel_list_to_array(vox_list: np.ndarray, size=1):
     """
     Convert a (Nx*Ny*Nz,3) list into (Nx,Ny,Nz) ndarray of masses
 
@@ -139,38 +150,17 @@ def voxel_list_to_array(vox_list: np.ndarray, size=1.0):
     return vox_arr
 
 
-# def directions_per_voxel(detectors, voxel_list, size=1):
-#     """
-#     :param detectors: list of dictionaries with detectors ('coord','angles','dir_mass_true','dir_mass_pred')
-#     :param voxel_list: voxels with masses (x,y,m), (0,0) is in the left down corner
-#     :param size:  voxel (cube) size
-#     :return:
-#      voxel_crosses - list of len(voxel_list) lists, each containing (i_d, i_l) for lines crossing corresponding voxel
-#     """
-#     voxel_crosses = [[] for i in range(len(voxel_list))]
-#     for i_v, (*vox, mass) in enumerate(voxel_list):
-#         for i_d, det in enumerate(detectors):
-#             for i_l, direction in enumerate(det['angles']):
-#                 assert direction.size==3
-#                 if line_x_cube(vox, size/2, det['coord'], direction): voxel_crosses[i_v].append((i_d,i_l))
-#     return voxel_crosses
-#
-#
-# def voxels_per_direction(det_coord, direction, voxel_list, size=1):
-#     """
-#     :param det_coord:
-#     :param direction:
-#     :param voxel_list:
-#     :param size:
-#     :return:
-#     """
-#     assert direction.size==3
-#     passed_list = []
-#     for i_v, (*vox, mass) in enumerate(voxel_list):
-#         if line_x_cube(vox, size / 2, det_coord, direction): passed_list.append(i_v)
-#     return passed_list
-def voxels_vs_detectors(voxel_list, detectors, size=1):
-    # TODO document this
+def voxels_vs_detectors(voxel_list: np.ndarray, detectors: dict, size=1):
+    """
+    Find correspondence between voxels and rays crossing them.
+
+    :param voxel_list: (Nx*Ny*Nz,4) ndarray of voxel coordinates and masses (x,y,z,m)
+    :param detectors: dict (with i_d as keys) of dictionaries with detectors ('coord','angles','dir_mass_true','dir_mass_pred')
+    :param size: voxel size (>1 can be used when merging voxels into bigger voxels)
+    :return:
+    detectors: dict of dictionaries with ('coord','angles','dir_mass_true','dir_mass_pred')
+    vox_crosses: list of lists, for each voxel is a list of (detector_id, direction_id) for all the rays that cross corresponding voxel
+    """
     mass_loc = -2 if voxel_list.shape[1] > 4 else -1
     list_vox_coord = voxel_list[:, :mass_loc]
     voxel_crosses = [[] for i in range(voxel_list.shape[0])]
@@ -200,7 +190,7 @@ def line_x_all_cubes(cube_list: np.ndarray, p1: np.ndarray, d: np.ndarray, r=0.5
     return np.argwhere(np.abs(np.linalg.norm(np.cross(cube_list - p1, d), axis=1)) < r).ravel()
 
 
-def create_detectors(angle_params, location_params, list_true, list_pred, size=1, detector_shift=None):
+def create_detectors(angle_params: tuple, location_params: tuple, list_true: np.ndarray, list_pred: np.ndarray, size=1.0, detector_shift=None):
     """
     Creates a set of detectors with defined parameters (angular binning and location coordinates) and finds correspondence between voxels and directions (rays) crossing them for every detector.
     Calculates masses along each direction for true and (initial) predicted 3d models.
@@ -210,9 +200,9 @@ def create_detectors(angle_params, location_params, list_true, list_pred, size=1
     :param list_true: real 3d model, (Nx*Ny*Nz,4) ndarray of voxel coordinates and masses (x,y,z,m)
     :param list_pred: predicted 3d model, (Nx*Ny*Nz,4) ndarray of voxel coordinates and masses (x,y,z,m)
     :param size: voxel size, default is 1
-    :param detector_shift: (x,y,z), not None if all detectors have to be shifted in fixed direction
+    :param detector_shift: (x,y,z), if not None all detectors have to be shifted in fixed direction
     :return:
-    detectors: list of dictionaries with ('coord','angles','dir_mass_true','dir_mass_pred')
+    detectors: dict of dictionaries with ('coord','angles','dir_mass_true','dir_mass_pred')
     vox_crosses: list of lists, for each voxel is a list of (detector_id, direction_id) for all the rays that cross corresponding voxel
     """
     mass_loc = -2 if list_pred.shape[1] > 4 else -1
@@ -520,7 +510,13 @@ def save_detector(file_name: str, detector: dict, i_det=0, sim_types: list = Non
 
 
 def read_detectors(detector_dir: str):
-    # TODO document this
+    """
+    Read detector parameters and 2d histograms from all files starting with 'det' in the directory.
+
+    :param detector_dir: path to directory with detector files
+    :return:
+    detectors: dict of dictionaries with ('coord','angles','dir_mass_true','dir_mass_pred')
+    """
     det_list = [d for d in os.listdir(detector_dir) if d.startswith('det')]
     det_types = np.unique([d.split('_')[1] for d in det_list])
     detectors = {det_iter: {} for det_iter in det_types}

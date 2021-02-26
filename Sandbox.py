@@ -32,7 +32,7 @@ if not read_from_files:
 
     # # defining the voxels
     start = datetime.now()
-    print('Simulation of {}x{}x{} voxel model with {}x{} grid of detectors, minimum {} of intersecting detectors \n'.format(*scene_shape[:-1],det_nx,det_nx,multi_detect))
+    print('Simulation of {}x{}x{} voxel model with {}x{} grid of detectors, minimum {} of intersecting detectors \n'.format(*scene_shape,det_nx,det_nx,multi_detect))
     volo_init, volo_true = create_default_voxel_setting(scene_shape, delta_alpha, shift, size=size)
     list_init = voxel_array_to_list(volo_init, size=size)
     list_true = voxel_array_to_list(volo_true, size=size)

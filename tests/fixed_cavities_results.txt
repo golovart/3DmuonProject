@@ -1,0 +1,15 @@
+Simulation of 40x40x40 voxel model with 3x3 grid of detectors, minimum 2 of intersecting detectors 
+
+No fixed cavities
+iteration time: 0:30:38.594860
+Remaining voxel error with 0.5 threshold: 0.21
+Best score:
+	0.17 with threshold 0.40
+
+Fixed known cavities
+iteration time: 0:15:35.114555
+Remaining voxel error with 0.5 threshold: 0.20
+Best score:
+	0.17 with threshold 0.40
+
+full running time: 0:46:14.761599
