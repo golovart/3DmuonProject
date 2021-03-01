@@ -21,6 +21,8 @@ distance in that direction from detector to the Earth surface (boundary of the v
 
 ## Project structure
 
+* _muon_reconstruction.ipynb_ - illustrative jupyter notebook showing the example of 
+  step by step simulation with visualisation of the outputs.
 * _3dSimulation.py_ - main simulation script. Can take model and detector files 
   to perform a simulation or run with the default setting.
 * _create_scene.py_ - script to create default scene and save into input files.
