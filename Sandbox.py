@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from muon_utils import *
 # from create_scene import *
-import os, shutil
+import os, shutil, sys
+
+args = sys.argv
 
 # Simulation parameters
 global_start = datetime.now()
@@ -54,7 +56,7 @@ if not read_from_files:
         for i_d, det in detectors.items():
             save_detector(input_dir+'/detectors/det_init.txt', det, i_d)
 else:
-    detectors_in = read_detectors(input_dir+'/detectors')
+    detectors_in = read_detectors(input_dir + '/detectors')
     if os.path.exists(output_dir + '/detectors'): detectors_out = read_detectors(output_dir + '/detectors')
     else: detectors_out = None
     detectors = detectors_in['init']
@@ -136,3 +138,4 @@ print('Remaining voxel error with {} threshold: {:.2f}'.format(thresh,
                                                                rve_score(volo_true, volo_init, volo_pred > thresh)))
 
 print('full running time: '+str(datetime.now()-global_start))
+plt.show()

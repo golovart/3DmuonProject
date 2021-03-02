@@ -24,7 +24,7 @@ distance in that direction from detector to the Earth surface (boundary of the v
 * _muon_reconstruction.ipynb_ - illustrative jupyter notebook showing the example of 
   step by step simulation with visualisation of the outputs.
 * _3dSimulation.py_ - main simulation script. Can take model and detector files 
-  to perform a simulation or run with the default setting.
+  to perform a simulation or run with the default setting. For help on command line arguments use '-h'.
 * _create_scene.py_ - script to create default scene and save into input files.
 * _muon_utils.py_ - set of functions used in simulation: creating voxels, detectors, 
   performing gradient steps, visualising detectors and voxels, saving and reading detectors and models.

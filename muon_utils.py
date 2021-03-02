@@ -2,10 +2,124 @@ import numpy as np
 # import scipy as sp
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors
-import itertools, gc, os, h5py, shutil
+import itertools, gc, os, h5py, shutil, sys
 
 
-# from datetime import datetime
+def process_arguments(argument_list):
+    """
+    Process command line arguments of the script, according to notations in 'help' (-h).
+    If no arguments passed, default parameter values are returned.
+
+    :param argument_list: sys.argv instance
+    :return:
+    Simulation parameters:
+    input_dir:dict - dict('path':str, 'read':bool, 'save':bool) for processing the input
+    output_dir:dict - dict('path':str, 'read':bool, 'save':bool) for processing the output
+    det_nx:int, det_ny:int - size of detector grid N1xN2
+    scene_shape:tuple - N1xN2xN3 shape of the voxel structure
+    num_steps:int - number of gradient steps
+    lr:float - learning rate
+    thresh:float - anomaly threshold applied after all iterations
+    reiterate:bool - whether to run the iterations (grad steps), or only load/save/visualise the data
+    det_id:int - id of the detector to visualise in 2D angular histograms
+    visualise:dict - dict('det':bool, 'vox':bool) for visualising detectors and 3d models
+    """
+    input_dir = {'path':None, 'read':False, 'save':False}
+    output_dir = {'path':None, 'read':False, 'save':False}
+    det_nx, det_ny = 3, 3
+    scene_shape = (32,32,32)
+    num_steps = 50
+    lr = 0.06 / det_nx / scene_shape[2]
+    thresh = 0.4
+    det_id = 1
+    reiterate = True
+    visualise = {'det': False, 'vox': False}
+    if not len(argument_list)>1:
+        return input_dir, output_dir, det_nx, det_ny, scene_shape, num_steps, lr, thresh, reiterate, det_id, visualise
+    else: argument_list = argument_list[1:]
+
+    if not argument_list[0].startswith('-'): raise KeyError('Undefined argument: '+argument_list[0])
+
+    known_keys = ['h','i','o','s','d','n','l','t','ni','v']
+    help_msg = """usage: python 3dSimulation.py [opt1] [arg1] [opt2] [arg2] ...
+    -h  \t: print help message
+    -i dir\t: input directory to load input (optional). If not provided, default scene is created and not saved in files. 
+    \t\t  If provided, but empty, default scene is created and saved in the directory. 
+    -o dir\t: output directory (optional). If not provided, output files are not saved. If not empty, recreated as empty.
+    -d N\t: size of the detector grid. If 1 number is passed, grid is NxN. If 2 numbers are passed, grid is N1xN2.
+    -s S\t: voxel size of the scene. If 1 number is passed, 3d array's shape is SxSxS. If 3 numbers are passed, shape is S1xS2xS3
+    -n num\t: number of gradient steps. If not provided, default is 50
+    -l lr\t: learning rate. If not provided, default is calculated from number of detectors and voxel shape, close to 0.001
+    -t thr\t: threshold on the voxel value for the final 3d model. If not provided, default is 0.4
+    -ni \t: not-iterate. If provided, the iteration is not performed, input and/or output are loaded from directories.
+    -v [det [id]] [vox] : whether to visualise the output. If 'det' key provided, the id detector is visualised 
+    \t\t\t   (if id not provided, id=1). If 'vox' key provided, 3d voxel models are visualised using matplotlib.
+    """
+    arguments = {}
+    key = 'u'
+    for arg in argument_list:
+        if arg.startswith('-'):
+            key = arg[1:]
+            if key not in known_keys: raise KeyError('Undefined argument: -' + key)
+            arguments[key] = []
+        else:
+            arguments[key].append(arg)
+    if 'u' in arguments.keys(): raise KeyError('Undefined argument: '+argument_list[0])
+
+    if 'h' in arguments.keys():
+        print(help_msg)
+        exit()
+    if 'i' in arguments.keys():
+        if len(arguments['i']) < 1: raise ValueError('Missing argument for input dir')
+        input_dir['path'] = arguments['i'][0]
+        if len(arguments['i']) > 1: raise ValueError('Too many arguments for input dir')
+        if os.path.exists(input_dir['path']):
+            if len(os.listdir(input_dir['path'])):
+                input_dir['read'] = True
+            else:
+                input_dir['save'] = True
+        else:
+            os.mkdir(input_dir['path'])
+            input_dir['save'] = True
+    if 'o' in arguments.keys():
+        if len(arguments['o']) < 1: raise ValueError('Missing argument for output dir')
+        output_dir['path'] = arguments['o'][0]
+        if len(arguments['o']) > 1: raise ValueError('Too many arguments for output dir')
+        if os.path.exists(output_dir['path']):
+            if len(os.listdir(output_dir['path'])):
+                output_dir['read'] = True
+            else:
+                output_dir['save'] = True
+        else:
+            os.mkdir(output_dir['path'])
+            output_dir['save'] = True
+    if 'd' in arguments.keys():
+        if len(arguments['d']) == 1: det_nx, det_ny = int(arguments['d'][0]), int(arguments['d'][0])
+        elif len(arguments['d']) == 2: det_nx, det_ny = int(arguments['d'][0]), int(arguments['d'][1])
+        else: raise ValueError('Wrong arguments for the detector grid size')
+    if 's' in arguments.keys():
+        if len(arguments['s']) == 1: scene_shape = (int(arguments['s'][0]),int(arguments['s'][0]),int(arguments['s'][0]))
+        elif len(arguments['s']) == 3: scene_shape = (int(arguments['s'][0]),int(arguments['s'][1]),int(arguments['s'][2]))
+        else: raise ValueError('Wrong arguments for the voxel model size')
+        lr = 0.06 / det_nx / scene_shape[2]
+    if 'n' in arguments.keys():
+        if len(arguments['n']) == 1: num_steps = int(arguments['n'][0])
+        else: raise ValueError('Wrong arguments for the number of gradient steps')
+    if 'l' in arguments.keys():
+        if len(arguments['l']) == 1: lr = float(arguments['l'][0])
+        else: raise ValueError('Wrong arguments for the learning rate')
+    if 't' in arguments.keys():
+        if len(arguments['t']) == 1: thresh = float(arguments['t'][0])
+        else: raise ValueError('Wrong arguments for the threshold')
+    if 'ni' in arguments.keys():
+        reiterate = False
+    if 'v' in arguments.keys():
+        if not len(arguments['v']): raise ValueError('Missing argument for visualisation')
+        if 'det' in arguments['v']: visualise['det'] = True
+        if 'vox' in arguments['v']: visualise['vox'] = True
+        if 'det' in arguments['v'] and arguments['v'][-1]!='det':
+            det_id = ([int(arguments['v'][i+1]) for i,arg in enumerate(arguments['v']) if arg=='det'])[0]
+    return input_dir, output_dir, det_nx, det_ny, scene_shape, num_steps, lr, thresh, reiterate, det_id, visualise
 
 
 def add_empty_sphere(vox_array: np.ndarray, c: np.ndarray, r: float, delta=0.01):
@@ -348,7 +462,7 @@ def visualise_voxels(vox_cubes: np.ndarray, inv=True, figsize=(5, 5), det_coords
     ax.voxels(*shrink(filled_2), filled_2, facecolors=fcolors_2)
     if det_coords is not None:
         ax.scatter(det_coords[:, 0], det_coords[:, 1], zs=np.min(det_coords[:, 2]), zdir='z', linewidth=3)
-    plt.show()
+    plt.show(block=False)
 
 
 def visualise_detector(detector: dict, i_det=0, iterated=True, origin='lower',
@@ -397,7 +511,7 @@ def visualise_detector(detector: dict, i_det=0, iterated=True, origin='lower',
     ax3.set_xlabel('tan_x')
     ax3.set_ylabel('tan_y')
     fig.colorbar(mappa, ax=ax3)
-    plt.show()
+    plt.show(block=False)
 
 
 def rve_score(vox_true:np.ndarray, vox_init:np.ndarray, vox_pred:np.ndarray):
@@ -509,19 +623,20 @@ def save_detector(file_name: str, detector: dict, i_det=0, sim_types: list = Non
             np.savetxt(outf, det_array, fmt='%.2f', delimiter=' ')
 
 
-def read_detectors(detector_dir: str):
+def read_detectors(detector_dir: str, detector_state='init'):
     """
     Read detector parameters and 2d histograms from all files starting with 'det' in the directory.
 
     :param detector_dir: path to directory with detector files
+    :param detector_state: detector state before or after simulation, can be 'init' or 'final'. "True" detector is always 'init'.
     :return:
     detectors: dict of dictionaries with ('coord','angles','dir_mass_true','dir_mass_pred')
     """
     det_list = [d for d in os.listdir(detector_dir) if d.startswith('det')]
-    det_types = np.unique([d.split('_')[1] for d in det_list])
-    detectors = {det_iter: {} for det_iter in det_types}
+    # det_types = np.unique([d.split('_')[1] for d in det_list])
+    detectors = {}
     for det_name in det_list:
-        det_iter = det_name.split('_')[1]
+        if not detector_state == det_name.split('_')[1]: continue
         det_type = (det_name.split('_')[-1])[:-4]
         det_tmp = {}
         with open(detector_dir+'/'+det_name,'r') as df:
@@ -536,10 +651,10 @@ def read_detectors(detector_dir: str):
             det_tmp['angles'] = det_angles / np.linalg.norm(det_angles, axis=1, keepdims=True)
             det_tmp['angle_params'] = (tx_min, tx_max, n_tx, ty_min, ty_max, n_ty)
             det_tmp['dir_mass_'+det_type] = np.loadtxt(df).ravel()
-        if det_tmp['id'] in detectors[det_iter].keys():
-            detectors[det_iter][det_tmp['id']]['dir_mass_'+det_type] = det_tmp['dir_mass_'+det_type]
+        if det_tmp['id'] in detectors.keys():
+            detectors[det_tmp['id']]['dir_mass_'+det_type] = det_tmp['dir_mass_'+det_type]
         else:
-            detectors[det_iter][det_tmp['id']] = det_tmp
+            detectors[det_tmp['id']] = det_tmp
     return detectors
 
 
